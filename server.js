@@ -1,5 +1,7 @@
 var express = require('express');
 var http = require('https');
+var MongoClient = require('mongodb').MongoClient;
+var assert = require('assert');
 var app = express();
 var port = process.env.PORT || 8080;
 var key = process.env.KEY;
@@ -7,14 +9,40 @@ var cx = process.env.CX;
 
 var history = function() {
     var history = [];
+    var mongoUrl = 'mongodb://localhost:27017/test';
+
+    MongoClient.connect(mongoUrl, function(err, db) {
+        assert.equal(null, err);
+        console.log("Connected correctly to server.");
+        db.close();
+    });
+
     res = {
         'update': function (str) {
-            if (history.unshift({'q': str, 'date': new Date()}) > 10) {
-                history.pop();
-            }
+
+            MongoClient.connect(mongoUrl, function(err, db) {
+                assert.equal(null, err);
+                db.collection('history').insertOne(
+                    {'q': str, 'date': new Date()},
+                    function(err, result) {
+                        assert.equal(err, null);
+                        db.close();
+                    }
+                );
+            });
         },
-        'get': function() {
-            return JSON.stringify(history);
+        'get': function(callback) {
+            MongoClient.connect(mongoUrl, function(err, db) {
+                assert.equal(null, err);
+                db.collection('history').find().toArray(
+                    function(err, docs) {
+                        callback(JSON.stringify(docs.map(function (v) {
+                            return {'q':v.q, 'date':v.date};
+                        })));
+                    }
+                );
+                db.close();
+            });
         }
     };
     return res;
@@ -60,19 +88,10 @@ app.get('/search/:data', function (req, res) {
 });
 
 app.get('/latest', function (req, res) {
-    res.send(history.get());
+    history.get(function(s) {
+        console.log(s);
+        res.send(s);
+    });
 });
 
 app.listen(port);
-
-
-
-
-
-
-
-
-
-
-
-
