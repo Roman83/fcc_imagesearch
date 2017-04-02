@@ -8,8 +8,7 @@ var key = process.env.KEY;
 var cx = process.env.CX;
 
 var history = function() {
-    var history = [];
-    var mongoUrl = 'mongodb://localhost:27017/test';
+    var mongoUrl = process.env.MONGODB_URI;
 
     MongoClient.connect(mongoUrl, function(err, db) {
         assert.equal(null, err);
